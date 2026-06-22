@@ -187,17 +187,29 @@ SCD-1 (22490), SCD-2 (25504), SGDC-1 (43226).
 
 ```bash
 pip install -r requirements.txt          # requests, sgp4, grpcio
-# (HeraclitusDB a correr em 127.0.0.1:7474)
+# Instância DEDICADA da AEB (gRPC 7476 / REST 7477):
+#   HERACLITUS_DATA_DIR=D:\AEB-data HERACLITUS_GRPC_ADDR=127.0.0.1:7476 \
+#   HERACLITUS_REST_ADDR=127.0.0.1:7477 heraclitus-server
 
-# Ingestão
+# Ingestão (Os Sentidos)
 python pipeline.py --dry-run             # busca+parse, NÃO grava (validação)
-python pipeline.py --catnr 47699 --once  # ingere Amazonia-1, um ciclo
-python pipeline.py --grupo --interval 60 # catálogo BR, streaming a cada 60s
+python pipeline.py --grupo --once        # ingere o catálogo BR (uma vez)
+python seed_demo.py                      # série temporal + anomalias (demo)
+
+# O Cérebro — deteção de anomalias
+python main.py --once --reset            # uma passagem sobre o log
+python main.py --daemon --interval 8     # vigília contínua
+
+# Simulação AO VIVO (tempo acelerado: satélites orbitam à vista)
+python stream.py --accel 60 --interval 3 # 60× tempo real, ciclo de 3s
+
+# Dashboard (globo 3D + antenas + hits + telemetria + anomalias)
+python dashboard.py                      # http://127.0.0.1:7480
 
 # Consultas forenses
-python consulta.py asof 4641814 --catnr 47699   # estado antes da falha
-python consulta.py prov <event_id>              # cadeia de custódia
-python consulta.py why  <event_id>              # cadeia causal de um alerta
+python consulta.py asof <lsn> --catnr 47699   # estado antes da falha
+python consulta.py prov <event_id>            # cadeia de custódia
+python consulta.py why  <event_id>            # cadeia causal de um alerta
 ```
 
 ---
@@ -219,10 +231,13 @@ consulta.py    : AS OF LSN → estado pré-falha ✓   PROVENANCE → cadeia de 
 ## 🗺️ Roadmap
 
 - ✅ **Os Sentidos** — `orbit.py` (TLE+SGP4+geometria), `pipeline.py` (CelesTrak→banco), `consulta.py` (AS OF/PROVENANCE/WHY).
-- 🔜 **O Cérebro** — `agent/graph.py` (grafo temporal órbita+hardware), `agent/act_r.py` (ativação ACT-R: *boost* em sensores fora da janela nominal), `main.py --daemon` (deteção de anomalias térmicas/elétricas e manobras).
-- 🔜 **Resiliência** — cache local de TLE (evita martelar a CelesTrak / suporte offline).
+- ✅ **O Cérebro** — `agent/graph.py` (grafo temporal), `agent/act_r.py` (ativação ACT-R), `agent/anomalias.py` (detetores térmico/energia/órbita), `main.py --daemon`.
+- ✅ **Dashboard 3D** — `dashboard.py`: globo WebGL com a Terra, órbitas, **estações terrenas (antenas)**, **contactos (hits)**, telemetria e anomalias; tela cheia; assets locais (offline).
+- ✅ **Simulação ao vivo** — `stream.py`: propagação contínua com tempo acelerado.
+- ✅ **Resiliência** — cache local de TLE (cache-first, evita martelar a CelesTrak / offline).
+- ✅ **Instância dedicada** do HeraclitusDB para a AEB (porta 7476, data dir próprio).
 - 🔜 **Mais fontes** — Space-Track (auth), INPE/CDSR (catálogo), CRC (passagens).
-- 🔜 **Instância dedicada** do HeraclitusDB para a AEB (data dir/porta próprios).
+- 🔜 **Telemetria real** — substituir `simular_telemetria` pelo feed das estações terrenas.
 
 ---
 

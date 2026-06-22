@@ -183,7 +183,7 @@ function renderGlobe(){if(!globe)return;
  // antenas (estações terrenas) = 📡 ; satélites = 🛰️  (distingue claramente)
  ANTENAS.forEach(a=>marks.push({lat:a.lat,lng:a.lon,alt:0,icon:'📡',nome:a.nome,cor:COR_ANT,ant:1}));
  DATA.satelites.forEach(s=>{
-   const est=estDe(s.catnr).filter(e=>e.lat!=null);
+   const est=estDe(s.catnr).filter(e=>e.lat!=null).slice(-40); // rasto recente (live)
    if(est.length>1)paths.push({coords:est.map(e=>[e.lat,e.lon,clampAlt((e.alt||750)/R)]),cor:s._cor});
    const e=est[est.length-1];if(!e)return;
    const alt=clampAlt((e.alt||750)/R);
@@ -201,7 +201,7 @@ function renderGlobe(){if(!globe)return;
 }
 function anoms(){el('anoms').innerHTML=DATA.anomalias.slice().reverse().map(a=>`<div class="an-row ${a.severidade}"><span class="sev">${a.severidade}</span><div><div class="d">${a.descricao}</div><div class="m">${a.sat} · ${a.codigo} · → OrbitState LSN ${a.orbitstate_lsn}</div></div></div>`).join('')||'<div class="empty">nenhuma anomalia ✓</div>';}
 function charts(){const s=DATA.satelites.find(x=>x.catnr===SEL),nm=s?s.nome:'';el('t_sat').textContent=nm;el('v_sat').textContent=nm;
- const e=estDe(SEL);spark('temp',e.map(x=>x.temp),'#F2922A',e,'temp');spark('volt',e.map(x=>x.volt),'#39b3ff',e,'volt');}
+ const e=estDe(SEL).slice(-24);spark('temp',e.map(x=>x.temp),'#F2922A',e,'temp');spark('volt',e.map(x=>x.volt),'#39b3ff',e,'volt');}
 function spark(id,vals,color,est,tipo){const s=el(id),W=s.clientWidth||300,H=52,p=14;
  const v=vals.filter(x=>x!=null).map(Number);if(!v.length){s.innerHTML='<text x="6" y="14">sem dados</text>';return;}
  const mn=Math.min(...v),mx=Math.max(...v),rg=(mx-mn)||1;s.setAttribute('viewBox',`0 0 ${W} ${H}`);
