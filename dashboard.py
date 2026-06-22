@@ -142,8 +142,8 @@ function alcance(altKm){return Math.acos(R/(R+altKm))*180/Math.PI;}
 function fitGlobe(){if(!globe)return;const m=el('main');globe.width(m.clientWidth).height(m.clientHeight);}
 window.addEventListener('resize',fitGlobe);
 document.addEventListener('fullscreenchange',()=>setTimeout(fitGlobe,120));
-el('fs').onclick=()=>{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();};
-el('fsg').onclick=()=>{document.fullscreenElement?document.exitFullscreen():el('main').requestFullscreen();};
+el('fs')&&(el('fs').onclick=()=>{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();});
+el('fsg')&&(el('fsg').onclick=()=>{document.fullscreenElement?document.exitFullscreen():el('main').requestFullscreen();});
 
 function initGlobe(){
   globe=Globe()(el('globe'))
@@ -152,10 +152,9 @@ function initGlobe(){
     .atmosphereColor('#5aa0ff').atmosphereAltitude(.2)
     .pathColor(p=>p.cor).pathStroke(p=>p.hit?1.7:2.4).pathPointAlt(p=>p[2]).pathTransitionDuration(0)
     .pathDashLength(p=>p.hit?0.3:1).pathDashGap(p=>p.hit?0.12:0).pathDashAnimateTime(p=>p.hit?1600:0)
-    .htmlElementsData([]).htmlLat(d=>d.lat).htmlLng(d=>d.lng).htmlAltitude(d=>d.alt)
-    .htmlElement(d=>{const e=document.createElement('div');
-      e.innerHTML=`<span style="font-size:${d.ant?16:19}px;filter:drop-shadow(0 0 2px #000)">${d.icon}</span><span style="font-size:11px;color:${d.cor};font-weight:700;margin-left:3px;text-shadow:0 0 4px #000,0 0 3px #000">${d.nome}</span>`;
-      e.style.cssText='white-space:nowrap;pointer-events:none;transform:translate(7px,-10px)';return e;});
+    .labelText(d=>d.txt).labelColor(d=>d.cor).labelSize(d=>d.sz).labelDotRadius(d=>d.dot)
+    .labelAltitude(d=>d.alt||0).labelResolution(2).labelsTransitionDuration(0)
+    .pointColor(p=>p.cor).pointAltitude(p=>p.alt).pointRadius(d=>d.r||.6).pointLabel(d=>d.nome);
   globe.controls().autoRotate=true;globe.controls().autoRotateSpeed=.45;
   fitGlobe();globe.pointOfView({lat:-12,lng:-55,altitude:2.4});
 }
@@ -170,8 +169,8 @@ async function load(){
   el('m_an').textContent=DATA.anomalias.length;
   DATA.satelites.forEach((s,i)=>s._cor=CORES[i%CORES.length]);
   if(!SEL&&DATA.satelites.length)SEL=(DATA.anomalias[0]||{}).catnr||DATA.satelites[0].catnr;
-  if(typeof Globe!=='undefined'&&!globe)initGlobe();
-  chips();renderGlobe();anoms();charts();
+  try{if(typeof Globe!=='undefined'&&!globe)initGlobe();renderGlobe();}catch(err){console.error('globo:',err);}
+  chips();anoms();charts();
 }
 const estDe=c=>DATA.estados.filter(e=>e.catnr===c);
 const anDe=c=>DATA.anomalias.filter(a=>a.catnr===c);
@@ -179,15 +178,19 @@ function chips(){el('chips').innerHTML=DATA.satelites.map(s=>{const na=anDe(s.ca
  return `<div class="chip ${s.catnr===SEL?'on':''}" onclick="sel('${s.catnr}')"><span class="dot" style="background:${s._cor}"></span>${s.nome||s.catnr}${na?`<span class="a">⚠${na}</span>`:''}</div>`;}).join('');}
 function sel(c){SEL=c;chips();charts();const e=estDe(c).slice(-1)[0];if(globe&&e&&e.lat!=null)globe.pointOfView({lat:e.lat,lng:e.lon,altitude:1.7},800);}
 function renderGlobe(){if(!globe)return;
- const paths=[],marks=[];let hits=0;
+ const paths=[],labels=[],pts=[];let hits=0;
  // antenas (estações terrenas) = 📡 ; satélites = 🛰️  (distingue claramente)
- ANTENAS.forEach(a=>marks.push({lat:a.lat,lng:a.lon,alt:0,icon:'📡',nome:a.nome,cor:COR_ANT,ant:1}));
+ ANTENAS.forEach(a=>{
+   labels.push({lat:a.lat,lng:a.lon,alt:0,txt:'📡 '+a.nome,cor:COR_ANT,sz:.9,dot:0});
+   pts.push({lat:a.lat,lng:a.lon,alt:0,cor:COR_ANT,nome:a.nome,r:.45});
+ });
  DATA.satelites.forEach(s=>{
    const est=estDe(s.catnr).filter(e=>e.lat!=null).slice(-40); // rasto recente (live)
    if(est.length>1)paths.push({coords:est.map(e=>[e.lat,e.lon,clampAlt((e.alt||750)/R)]),cor:s._cor});
    const e=est[est.length-1];if(!e)return;
    const alt=clampAlt((e.alt||750)/R);
-   marks.push({lat:e.lat,lng:e.lon,alt:alt,icon:'🛰️',nome:s.nome,cor:s._cor});
+   pts.push({lat:e.lat,lng:e.lon,alt:alt,cor:s._cor,nome:s.nome,r:.8});
+   labels.push({lat:e.lat,lng:e.lon,alt:alt,txt:'🛰️ '+s.nome,cor:s._cor,sz:1.0,dot:0});
    // hit = contacto: satélite dentro do alcance de visibilidade de uma antena
    const ran=alcance(e.alt||750);
    ANTENAS.forEach(a=>{if(angSep(e.lat,e.lon,a.lat,a.lon)<=ran){
@@ -195,7 +198,7 @@ function renderGlobe(){if(!globe)return;
      paths.push({coords:[[a.lat,a.lon,.003],[e.lat,e.lon,alt]],cor:'#2ecc71',hit:true});
    }});
  });
- globe.pathsData(paths).htmlElementsData(marks);
+ globe.pathsData(paths).labelsData(labels).pointsData(pts);
  el('m_ant').textContent=ANTENAS.length;
  el('m_hit').textContent=hits;
 }
