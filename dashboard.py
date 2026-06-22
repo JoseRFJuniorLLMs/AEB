@@ -105,6 +105,7 @@ svg text{fill:#7e8aa3;font-size:8px}
     <div><div class="k">satélites</div><div class="v" id="m_sat">—</div></div>
     <div><div class="k">antenas</div><div class="v" id="m_ant">—</div></div>
     <div><div class="k">contactos</div><div class="v" id="m_hit" style="color:var(--verde)">—</div></div>
+    <div><div class="k">leituras</div><div class="v" id="m_est">—</div></div>
     <div><div class="k">anomalias</div><div class="v cr" id="m_an">—</div></div>
     <button class="btn" id="fs">⛶ Tela cheia</button>
   </div>
