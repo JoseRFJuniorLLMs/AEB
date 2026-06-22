@@ -80,9 +80,17 @@ def _cache_load(catnr: int) -> tuple[str, str, str] | None:
     return parsed
 
 
-def fetch_tle(catnr: int, retries: int = 3) -> tuple[str, str, str] | None:
-    """Busca o TLE na CelesTrak; em falha, recorre ao cache local. Em sucesso,
-    atualiza o cache. Devolve (nome, linha1, linha2)."""
+def fetch_tle(catnr: int, retries: int = 3, max_cache_h: float = 6.0) -> tuple[str, str, str] | None:
+    """Devolve (nome, l1, l2). Estratégia: usa o cache se estiver FRESCO (TLE muda
+    ~1×/dia), evitando a rede; senão tenta a CelesTrak; em falha, usa cache antigo."""
+    path = _cache_path(catnr)
+    if os.path.exists(path):
+        age_h = (time.time() - os.path.getmtime(path)) / 3600.0
+        if age_h <= max_cache_h:
+            with open(path, encoding="utf-8") as f:
+                parsed = _parse_tle_text(f.read())
+            if parsed:
+                return parsed
     urls = [
         f"https://celestrak.org/NORAD/elements/gp.php?CATNR={catnr}&FORMAT=TLE",
         f"https://celestrak.org/api/readdata.php?CATNR={catnr}",
