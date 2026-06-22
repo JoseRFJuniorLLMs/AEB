@@ -103,7 +103,8 @@ svg text{fill:#7e8aa3;font-size:8px}
 <div class="top"><b>🛰 AEB-STREAM</b><span class="head" id="head"></span>
   <div class="met">
     <div><div class="k">satélites</div><div class="v" id="m_sat">—</div></div>
-    <div><div class="k">leituras</div><div class="v" id="m_est">—</div></div>
+    <div><div class="k">antenas</div><div class="v" id="m_ant">—</div></div>
+    <div><div class="k">contactos</div><div class="v" id="m_hit" style="color:var(--verde)">—</div></div>
     <div><div class="k">anomalias</div><div class="v cr" id="m_an">—</div></div>
     <button class="btn" id="fs">⛶ Tela cheia</button>
   </div>
@@ -123,6 +124,20 @@ svg text{fill:#7e8aa3;font-size:8px}
 const CORES=['#FFCD07','#39b3ff','#168821','#E52207','#F2922A','#b30059'];
 const R=6371, el=id=>document.getElementById(id);
 let DATA=null,SEL=null,globe=null;
+// Estações terrenas (antenas) reais — INPE / programa espacial BR
+const ANTENAS=[
+ {nome:'Cuiabá (INPE)',lat:-15.555,lon:-56.069},
+ {nome:'Cachoeira Paulista (INPE)',lat:-22.689,lon:-45.005},
+ {nome:'Alcântara (CLA)',lat:-2.373,lon:-44.396},
+ {nome:'Barreira do Inferno (Natal)',lat:-5.924,lon:-35.161},
+];
+const COR_ANT='#00e0ff';
+// ângulo central (graus) entre dois pontos lat/lon na esfera
+function angSep(la1,lo1,la2,lo2){const d=Math.PI/180;
+ const c=Math.sin(la1*d)*Math.sin(la2*d)+Math.cos(la1*d)*Math.cos(la2*d)*Math.cos((lo1-lo2)*d);
+ return Math.acos(Math.max(-1,Math.min(1,c)))/d;}
+// alcance angular máximo (graus) de visibilidade para um satélite à altitude altKm
+function alcance(altKm){return Math.acos(R/(R+altKm))*180/Math.PI;}
 
 function fitGlobe(){if(!globe)return;const m=el('main');globe.width(m.clientWidth).height(m.clientHeight);}
 window.addEventListener('resize',fitGlobe);
@@ -135,7 +150,10 @@ function initGlobe(){
     .globeImageUrl('/assets/earth.jpg').bumpImageUrl('/assets/topo.png')
     .backgroundImageUrl('/assets/sky.png').backgroundColor('#0a1020')
     .atmosphereColor('#5aa0ff').atmosphereAltitude(.2)
-    .pathColor(p=>p.cor).pathStroke(2.4).pathPointAlt(p=>p[2]).pathTransitionDuration(0)
+    .pathColor(p=>p.cor).pathStroke(p=>p.hit?1.7:2.4).pathPointAlt(p=>p[2]).pathTransitionDuration(0)
+    .pathDashLength(p=>p.hit?0.3:1).pathDashGap(p=>p.hit?0.12:0).pathDashAnimateTime(p=>p.hit?1600:0)
+    .labelText(d=>d.txt).labelColor(d=>d.cor).labelSize(d=>d.sz).labelDotRadius(d=>d.dot)
+    .labelAltitude(d=>d.alt||0).labelResolution(2).labelsTransitionDuration(0)
     .pointColor(p=>p.cor).pointAltitude(p=>p.alt).pointRadius(.7).pointLabel(p=>p.nome);
   globe.controls().autoRotate=true;globe.controls().autoRotateSpeed=.45;
   fitGlobe();globe.pointOfView({lat:-12,lng:-55,altitude:2.4});
@@ -146,6 +164,7 @@ async function load(){
   try{DATA=await (await fetch('/api/data')).json();}catch(e){return;}
   el('head').textContent='head LSN '+DATA.head;
   el('m_sat').textContent=DATA.satelites.length;
+  el('m_ant').textContent=ANTENAS.length;
   el('m_est').textContent=DATA.estados.length;
   el('m_an').textContent=DATA.anomalias.length;
   DATA.satelites.forEach((s,i)=>s._cor=CORES[i%CORES.length]);
@@ -159,9 +178,27 @@ function chips(){el('chips').innerHTML=DATA.satelites.map(s=>{const na=anDe(s.ca
  return `<div class="chip ${s.catnr===SEL?'on':''}" onclick="sel('${s.catnr}')"><span class="dot" style="background:${s._cor}"></span>${s.nome||s.catnr}${na?`<span class="a">⚠${na}</span>`:''}</div>`;}).join('');}
 function sel(c){SEL=c;chips();charts();const e=estDe(c).slice(-1)[0];if(globe&&e&&e.lat!=null)globe.pointOfView({lat:e.lat,lng:e.lon,altitude:1.7},800);}
 function renderGlobe(){if(!globe)return;
- const paths=DATA.satelites.map(s=>({coords:estDe(s.catnr).filter(e=>e.lat!=null).map(e=>[e.lat,e.lon,clampAlt((e.alt||750)/R)]),cor:s._cor})).filter(p=>p.coords.length>1);
- const pts=DATA.satelites.map(s=>{const e=estDe(s.catnr).slice(-1)[0];return(e&&e.lat!=null)?{lat:e.lat,lng:e.lon,alt:clampAlt((e.alt||750)/R),cor:s._cor,nome:s.nome}:null;}).filter(Boolean);
- globe.pathsData(paths).pointsData(pts);}
+ const paths=[],labels=[],pts=[];let hits=0;
+ // antenas (estações terrenas): ponto + rótulo na superfície
+ ANTENAS.forEach(a=>labels.push({lat:a.lat,lng:a.lon,alt:0,txt:'📡 '+a.nome,cor:COR_ANT,sz:.85,dot:.5}));
+ DATA.satelites.forEach(s=>{
+   const est=estDe(s.catnr).filter(e=>e.lat!=null);
+   if(est.length>1)paths.push({coords:est.map(e=>[e.lat,e.lon,clampAlt((e.alt||750)/R)]),cor:s._cor});
+   const e=est[est.length-1];if(!e)return;
+   const alt=clampAlt((e.alt||750)/R);
+   pts.push({lat:e.lat,lng:e.lon,alt:alt,cor:s._cor,nome:s.nome});
+   labels.push({lat:e.lat,lng:e.lon,alt:alt,txt:s.nome,cor:s._cor,sz:1.0,dot:0});
+   // hit = contacto: satélite dentro do alcance de visibilidade de uma antena
+   const ran=alcance(e.alt||750);
+   ANTENAS.forEach(a=>{if(angSep(e.lat,e.lon,a.lat,a.lon)<=ran){
+     hits++;
+     paths.push({coords:[[a.lat,a.lon,.003],[e.lat,e.lon,alt]],cor:'#2ecc71',hit:true});
+   }});
+ });
+ globe.pathsData(paths).labelsData(labels).pointsData(pts);
+ el('m_ant').textContent=ANTENAS.length;
+ el('m_hit').textContent=hits;
+}
 function anoms(){el('anoms').innerHTML=DATA.anomalias.slice().reverse().map(a=>`<div class="an-row ${a.severidade}"><span class="sev">${a.severidade}</span><div><div class="d">${a.descricao}</div><div class="m">${a.sat} · ${a.codigo} · → OrbitState LSN ${a.orbitstate_lsn}</div></div></div>`).join('')||'<div class="empty">nenhuma anomalia ✓</div>';}
 function charts(){const s=DATA.satelites.find(x=>x.catnr===SEL),nm=s?s.nome:'';el('t_sat').textContent=nm;el('v_sat').textContent=nm;
  const e=estDe(SEL);spark('temp',e.map(x=>x.temp),'#F2922A',e,'temp');spark('volt',e.map(x=>x.volt),'#39b3ff',e,'volt');}
