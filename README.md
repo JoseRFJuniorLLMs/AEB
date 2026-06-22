@@ -7,6 +7,12 @@ orbitais (TLE) e telemetria de satélites brasileiros** — Agência Espacial Br
 Construído sobre o **HeraclitusDB** (banco event-sourced, log append-only com Merkle
 blake3) e os padrões do framework **LABRA-AGU**.
 
+![Dashboard AEB-STREAM](assets/dasboard.png)
+
+> Dashboard ao vivo (`python dashboard.py` → http://127.0.0.1:7480): globo 3D com a
+> Terra real, as órbitas dos satélites brasileiros por cima, as estações terrenas do
+> INPE, os feixes de contacto (hits) e o painel de anomalias detetadas pelo Cérebro.
+
 ---
 
 ## 🎯 Propósito
