@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Runtime / estado local (regenerável)
+cache/
+*.ckpt
+*.tle
+
+# Dados locais do HeraclitusDB dedicado
+AEB-data/

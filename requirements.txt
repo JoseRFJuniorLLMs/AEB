@@ -1,0 +1,7 @@
+# AEB-STREAM — dependências
+requests>=2.31      # ingestão HTTP (CelesTrak/INPE)
+sgp4>=2.23          # propagação orbital (TLE → posição TEME)
+grpcio>=1.78        # transporte gRPC para o HeraclitusDB
+
+# SDK do HeraclitusDB (não está no PyPI): adicionado via sys.path no código
+#   D:\DEV\HeraclitusDB\sdk\python
